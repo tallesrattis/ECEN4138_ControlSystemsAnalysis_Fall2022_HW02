@@ -75,3 +75,7 @@ title('vc')
 ylabel('vc(t)')
 xlabel('t')
 legend('v','vc')
+
+
+
+% blablabalabal
