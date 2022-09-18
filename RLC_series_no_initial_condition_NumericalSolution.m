@@ -1,81 +1,79 @@
-% ECEN4138_ControlSystemsAnalysis_Fall2022 - RLC series
-% reference: https://www.mathworks.com/help/symbolic/solve-differential-equations-using-laplace-transform.html
-close all ; clear all ; clc
+%% 
+% This code accompanies question 1 on homework 2 for ECEN 4138 Fall 2022.
+% It describes a parallel RLC circuit and the circuit's responses to four
+% particular inputs.
+% Author: Kyle Thompson
 
-%% parameters
+clear all
 
-syms R L C Vc(t) s 
-assume([L C R] > 0)
+%% Develop transfer function for Parallel RLC
+syms R L C IL(t) s
+assume ([R L C] > 0)
 
-V(t)=1*heaviside(t) ;
-%V(t)=1*sin(t) 
-%V(t)=1*dirac(t) ;
+r1(t) = heaviside(t); % step function
+r2(t) = dirac(t); % impulse function
+r3(t) = sin(t); 
+r4(t) = heaviside(t) - heaviside(t - 2); % pulse w/ width = 2
+inputs = {r1 r2 r3 r4};
 
-%% equation 
+D_IL = diff(IL, t); % first derivative
+D2_IL = diff(IL, t, 2); % second derivative
 
-D_Vc = diff(Vc,t);
-D2_Vc = diff(Vc,t,2);
+eqn1 = (r1(t) == (D2_IL + 1/(R*C)*D_IL + 1/(L*C)*IL(t))*L*C);
+eqn2 = (r2(t) == (D2_IL + 1/(R*C)*D_IL + 1/(L*C)*IL(t))*L*C);
+eqn3 = (r3(t) == (D2_IL + 1/(R*C)*D_IL + 1/(L*C)*IL(t))*L*C);
+eqn4 = (r4(t) == (D2_IL + 1/(R*C)*D_IL + 1/(L*C)*IL(t))*L*C);
 
-eqn1 = ( 1/(L*C) )* V(t) == D2_Vc + (R/L)*D_Vc + (1/(L*C)) * Vc(t)
+eqns = {eqn1; eqn2; eqn3; eqn4};
 
+%% laplace transform
+syms IL_LT 
+syms 'eqn%dLT' [1 4]
+eqnsLT = [eqn1LT eqn2LT eqn3LT eqn4LT];
 
-% laplace
-eqn1LT = laplace(eqn1,t,s)
+for i = 1:4
+    eqnsLT(i) = laplace(eqns(i), t, s);
+    eqnsLT(i) = subs(eqnsLT(i),...
+            [IL(0) subs(diff(IL(t), t), t, 0) laplace(IL(t), t, s)],...
+            [0     0                          IL_LT               ]);
+end
 
+%% Solve
+for i = 1:4
+    sol(i) = solve(eqnsLT(i), IL_LT);
+    iL_sol{i} = ilaplace(sol(i), s, t);
+    iL_sol{i} = simplify(iL_sol{i});
+end
 
-% substitute
-syms V_LT Vc_LT 
-eqn1LT = subs( eqn1LT,[ Vc(0)  subs(diff(Vc(t), t), t, 0)  laplace(Vc(t), t, s) ] , ...
-                      [ 0      0                           Vc_LT                ] )
+%% Substitute values for R, L, and C
+% R=3 ohm, L=1 Henry, C=0.5 Farad
+vars = [R L C];
+values = [1 3 0.5];
 
-              
-% solve Vc
-eqns = [eqn1LT];
-vars = [Vc_LT];
-[Vc_LT] = solve(eqns,vars)
+for i = 1:4
+    iL_sol{i} = subs(iL_sol{i}, vars, values);
+end
 
+%% Plot
+figure(1)
+sgtitle("Parallel RLC Response to Various Inputs")
 
-% ilaplace
-Vc_sol = ilaplace(Vc_LT,s,t)
-Vc_sol = simplify(Vc_sol)
+for i = 1:4
+    subplot(2, 2, i)
+    hold on
+    fplot(iL_sol{i}, [0 15])
+    fplot(inputs{i}, [0 15])
 
+    if i == 1
+        ylim([0 1.25])
+    end
+    if i == 3
+        ylim([-1 1.5])
+    end
 
-
-%% Example (L=1, R=3, C=1/2) 
-
-%Substitute Values
-vars = [L R C];
-values = [1 3 1/2];
-vc_sol = subs(Vc_sol,vars,values)
-
-
-%% plot
-figure; hold on ;
-
-subplot(1,3,1);hold on ;
-fplot(V,[0 20],'r')
-fplot(vc_sol,[0 20],'k')
-title('vc')
-ylabel('vc(t)')
-xlabel('t')
-legend('v','vc')
-
-subplot(1,3,2);hold on ;
-fplot(V,[0 50],'r')
-fplot(vc_sol,[0 50],'k')
-title('vc')
-ylabel('vc(t)')
-xlabel('t')
-legend('v','vc')
-
-subplot(1,3,3);hold on ;
-fplot(V,[0 100],'r')
-fplot(vc_sol,[0 100],'k')
-title('vc')
-ylabel('vc(t)')
-xlabel('t')
-legend('v','vc')
-
-
-
-% blablabalabal
+    title_str = sprintf("Response to r(t) = %s", string(inputs{i}));
+    title(title_str)
+    xlabel('t (seconds)')
+    legend("{\it I_{L}} (amps)", "{\it r(t)} (amps)", 'Location', 'NorthEast')
+    legend('boxoff')
+end
