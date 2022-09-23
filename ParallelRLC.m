@@ -1,3 +1,4 @@
+%% Numerical Problem Presented in the class on Sept 7th
 %% Numerical Problem RLC Parallel Circuit
 
 %% transfer function 
